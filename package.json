@@ -1,0 +1,15 @@
+{
+  "name": "brainscan",
+  "version": "1.0.0",
+  "description": "brain.js vulnerability scanner for web code",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "brain.js": "^1.6.1"
+  }
+}

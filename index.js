@@ -8,6 +8,29 @@ const host = 'localhost';
 const port = 8000;
 const MAX_BODY_SIZE = 51200; // 50 KB limit to prevent DoS
 
+// Files the scanner is allowed to read (relative to project root)
+const SCAN_INCLUDE_EXTS = new Set(['.js', '.html', '.css', '.json']);
+const SCAN_EXCLUDE_DIRS = new Set(['node_modules', '.git', '.github']);
+const SCAN_EXCLUDE_FILES = new Set(['package-lock.json']);
+
+function walkProjectFiles(dir, baseDir, results) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch { return; }
+  for (const entry of entries) {
+    if (SCAN_EXCLUDE_DIRS.has(entry.name)) continue;
+    const abs = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkProjectFiles(abs, baseDir, results);
+    } else if (
+      SCAN_INCLUDE_EXTS.has(path.extname(entry.name)) &&
+      !SCAN_EXCLUDE_FILES.has(entry.name)
+    ) {
+      results.push(path.relative(baseDir, abs).replace(/\\/g, '/'));
+    }
+  }
+}
+
 console.log("Initializing BrainScan...");
 console.log("Training neural network (this may take a moment)...");
 initializeNeuralNetwork();
@@ -23,6 +46,13 @@ function serveFile(res, filePath, contentType) {
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(data);
   });
+}
+
+function handleApiFiles(res) {
+  const files = [];
+  walkProjectFiles(__dirname, __dirname, files);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(files));
 }
 
 function handleApiScan(req, res) {
@@ -46,15 +76,41 @@ function handleApiScan(req, res) {
     if (res.headersSent) return;
     try {
       const parsed = JSON.parse(body);
-      const code = parsed.code;
+      const filePath = parsed.filePath;
 
-      if (typeof code !== 'string') {
+      if (typeof filePath !== 'string') {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'code must be a string' }));
+        res.end(JSON.stringify({ error: 'filePath must be a string' }));
+        return;
+      }
+
+      // Path traversal protection: resolved path must stay inside project root
+      const absPath = path.resolve(__dirname, filePath);
+      const projectRoot = __dirname + path.sep;
+      if (!absPath.startsWith(projectRoot)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid file path' }));
+        return;
+      }
+
+      // Only allow whitelisted extensions
+      if (!SCAN_INCLUDE_EXTS.has(path.extname(absPath))) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'File type not scannable' }));
+        return;
+      }
+
+      let code;
+      try {
+        code = fs.readFileSync(absPath, 'utf8');
+      } catch {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'File not found' }));
         return;
       }
 
       const result = runScan(code);
+      result.filePath = filePath;
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
     } catch (err) {
@@ -73,6 +129,11 @@ const routes = {
 
 const requestListener = function (req, res) {
   const url = req.url.split('?')[0];
+
+  if (req.method === 'GET' && url === '/api/files') {
+    handleApiFiles(res);
+    return;
+  }
 
   if (req.method === 'POST' && url === '/api/scan') {
     handleApiScan(req, res);

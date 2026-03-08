@@ -1,13 +1,14 @@
 // BrainScan — vanilla JS frontend
-// Mirrors the pricecinerator-ai component structure (landing, input, results)
-// but implemented with plain DOM manipulation instead of React.
+// Scans the source files of the project itself.
 
 const state = {
-  view: 'landing',   // 'landing' | 'scanner'
+  view: 'landing',    // 'landing' | 'scanner'
+  isLoadingFiles: false,
   isScanning: false,
-  scanResult: null,
+  files: null,        // null = not loaded, string[] = loaded
+  selectedFile: null, // relative path string
+  scanResults: {},    // { [filePath]: result } — persists across selections
   errorMessage: null,
-  codeInput: '',     // persists textarea value across re-renders
 };
 
 // ---- DOM helpers ----
@@ -56,8 +57,8 @@ function renderLanding() {
 
   const stepsBox = el('ol', 'box');
   [
-    'Paste your HTML, JavaScript, or backend server code into the editor.',
-    'Click "Start Scanning" to submit the code for analysis.',
+    'Click "Start Scanning" to load the project\'s source files.',
+    'Select any file from the file browser to analyse it.',
     'The neural network detects vulnerability patterns and outputs a risk score.',
     'Review the flagged patterns and adjust your code accordingly.',
   ].forEach((text) => stepsBox.appendChild(el('li', null, text)));
@@ -73,6 +74,7 @@ function renderLanding() {
   btn.addEventListener('click', () => {
     state.view = 'scanner';
     render();
+    loadFiles();
   });
   panel.appendChild(btn);
 
@@ -92,7 +94,6 @@ function renderScanner() {
   const helpBtn = el('button', null, 'Help');
   helpBtn.addEventListener('click', () => {
     state.view = 'landing';
-    state.scanResult = null;
     state.errorMessage = null;
     render();
   });
@@ -102,40 +103,72 @@ function renderScanner() {
   menuBox.appendChild(menuRow);
   panel.appendChild(menuBox);
 
-  // Code input
-  const inputBox = el('div', 'box');
-  const inputRow = el('div', 'box-row');
-  const inputH3 = el('h3', null, 'Code Input');
-  const textarea = document.createElement('textarea');
-  textarea.id = 'code-input';
-  textarea.placeholder = 'Paste your HTML, JavaScript, or backend code here...';
-  textarea.value = state.codeInput;
-  textarea.addEventListener('input', (e) => { state.codeInput = e.target.value; });
-  inputRow.appendChild(inputH3);
-  inputRow.appendChild(textarea);
-  inputBox.appendChild(inputRow);
-  panel.appendChild(inputBox);
+  // File browser
+  const browserBox = el('div', 'box');
+  const browserRow = el('div', 'box-row');
+  browserRow.appendChild(el('h3', null, 'Project Files'));
 
-  // Scan button
-  const scanBtn = el('button', null, 'Scan Code');
-  scanBtn.disabled = state.isScanning;
-  scanBtn.addEventListener('click', handleScan);
-  panel.appendChild(scanBtn);
+  if (state.isLoadingFiles) {
+    browserRow.appendChild(el('div', 'loader'));
+  } else if (state.files && state.files.length > 0) {
+    const fileList = el('div', 'file-list');
+    state.files.forEach((filePath) => {
+      const row = el('div', 'file-row');
+      const cached = state.scanResults[filePath];
 
-  // Loader
+      // File name
+      const nameSpan = el('span', 'file-name', filePath);
+      row.appendChild(nameSpan);
+
+      // Mini risk badge if already scanned
+      if (cached) {
+        const badge = el('span', 'risk-badge ' + getRiskClass(cached.label),
+          cached.riskPercent + '% ' + cached.label);
+        row.appendChild(badge);
+      }
+
+      if (state.selectedFile === filePath) {
+        row.classList.add('file-row-selected');
+      }
+
+      if (state.isScanning && state.selectedFile === filePath) {
+        row.classList.add('file-row-scanning');
+      }
+
+      row.addEventListener('click', () => {
+        if (state.isScanning) return;
+        handleScanFile(filePath);
+      });
+
+      fileList.appendChild(row);
+    });
+    browserRow.appendChild(fileList);
+  } else if (state.errorMessage && !state.files) {
+    // error during file load shown below
+  } else {
+    browserRow.appendChild(el('p', null, 'No scannable files found.'));
+  }
+
+  browserBox.appendChild(browserRow);
+  panel.appendChild(browserBox);
+
+  // Loader during scan
   if (state.isScanning) {
-    panel.appendChild(el('div', 'loader'));
+    const loaderDiv = el('div', null);
+    loaderDiv.appendChild(el('p', null, 'Scanning ' + state.selectedFile + '…'));
+    loaderDiv.appendChild(el('div', 'loader'));
+    panel.appendChild(loaderDiv);
   }
 
   // Error
   if (state.errorMessage) {
-    const errDiv = el('div', 'error-row', state.errorMessage);
-    panel.appendChild(errDiv);
+    panel.appendChild(el('div', 'error-row', state.errorMessage));
   }
 
-  // Results
-  if (state.scanResult) {
-    panel.appendChild(renderResults(state.scanResult));
+  // Results for selected file
+  const result = state.selectedFile && state.scanResults[state.selectedFile];
+  if (result) {
+    panel.appendChild(renderResults(result));
   }
 
   return panel;
@@ -145,7 +178,9 @@ function renderScanner() {
 
 function renderResults(result) {
   const box = el('div', 'sized-box');
-  box.appendChild(el('h3', null, 'Scan Results'));
+
+  const heading = el('h3', null, 'Scan Results — ' + result.filePath);
+  box.appendChild(heading);
 
   // Risk score and bar
   const riskRow = el('div', 'box-row');
@@ -187,19 +222,29 @@ function renderResults(result) {
   return box;
 }
 
-// ---- Scan action ----
+// ---- Actions ----
 
-async function handleScan() {
-  const code = state.codeInput.trim();
+async function loadFiles() {
+  state.isLoadingFiles = true;
+  state.errorMessage = null;
+  render();
 
-  if (!code) {
-    state.errorMessage = 'Please enter some code to scan.';
+  try {
+    const res = await fetch('/api/files');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load files');
+    state.files = data;
+  } catch (err) {
+    state.errorMessage = err.message || 'Could not load project files.';
+  } finally {
+    state.isLoadingFiles = false;
     render();
-    return;
   }
+}
 
+async function handleScanFile(filePath) {
   state.isScanning = true;
-  state.scanResult = null;
+  state.selectedFile = filePath;
   state.errorMessage = null;
   render();
 
@@ -207,7 +252,7 @@ async function handleScan() {
     const response = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code }),
+      body: JSON.stringify({ filePath }),
     });
 
     const data = await response.json();
@@ -216,7 +261,7 @@ async function handleScan() {
       throw new Error(data.error || 'Scan failed. Please try again.');
     }
 
-    state.scanResult = data;
+    state.scanResults[filePath] = data;
   } catch (err) {
     state.errorMessage = err.message || 'An unexpected error occurred.';
   } finally {
@@ -234,3 +279,32 @@ function render() {
 }
 
 document.addEventListener('DOMContentLoaded', render);
+
+
+// ---- DOM helpers ----
+
+function el(tag, className, textContent) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (textContent !== undefined) e.textContent = textContent;
+  return e;
+}
+
+function getRiskBarColor(riskPercent) {
+  if (riskPercent < 20) return '#1a7a35';
+  if (riskPercent < 50) return '#c47a00';
+  if (riskPercent < 75) return '#b83000';
+  return '#880000';
+}
+
+function getRiskClass(label) {
+  const map = {
+    'Low Risk':      'risk-low',
+    'Medium Risk':   'risk-medium',
+    'High Risk':     'risk-high',
+    'Critical Risk': 'risk-critical',
+  };
+  return map[label] || 'risk-low';
+}
+
+

@@ -140,6 +140,58 @@ button:disabled {
   width: 90%;
 }
 
+.file-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #f0fbf4;
+  transition: background-color 0.15s ease;
+  gap: 10px;
+}
+
+.file-row:hover {
+  background-color: #d0f0db;
+}
+
+.file-row-selected {
+  background-color: #b8e8c8;
+  border-color: rgb(30, 120, 70);
+  font-weight: bold;
+}
+
+.file-row-scanning {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.file-name {
+  font-family: monospace;
+  font-size: 13px;
+  flex: 1;
+  word-break: break-all;
+}
+
+.risk-badge {
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #e8f8ee;
+  white-space: nowrap;
+}
+
 ol {
   text-align: left;
   padding-left: 20px;

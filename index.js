@@ -2,7 +2,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { initializeNeuralNetwork, runScan } = require("./src/neuralNetwork");
+const { initializeNeuralNetwork, retrainNeuralNetwork, runScan } = require("./src/neuralNetwork");
 
 const host = 'localhost';
 const port = 8000;
@@ -129,6 +129,18 @@ const routes = {
 
 const requestListener = function (req, res) {
   const url = req.url.split('?')[0];
+
+  if (req.method === 'POST' && url === '/api/retrain') {
+    try {
+      retrainNeuralNetwork();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Retrain failed' }));
+    }
+    return;
+  }
 
   if (req.method === 'GET' && url === '/api/files') {
     handleApiFiles(res);

@@ -5,6 +5,7 @@ const state = {
   view: 'landing',    // 'landing' | 'scanner'
   isLoadingFiles: false,
   isScanning: false,
+  isRetraining: false,
   files: null,        // null = not loaded, string[] = loaded
   selectedFile: null, // relative path string
   scanResults: {},    // { [filePath]: result } — persists across selections
@@ -97,9 +98,14 @@ function renderScanner() {
     state.errorMessage = null;
     render();
   });
+  const retrainBtn = el('button', null, state.isRetraining ? 'Retraining…' : 'Retrain NN');
+  retrainBtn.disabled = state.isRetraining || state.isScanning;
+  retrainBtn.style.marginLeft = '8px';
+  retrainBtn.addEventListener('click', handleRetrain);
   menuRow.appendChild(h2);
   menuRow.appendChild(subtitle);
   menuRow.appendChild(helpBtn);
+  menuRow.appendChild(retrainBtn);
   menuBox.appendChild(menuRow);
   panel.appendChild(menuBox);
 
@@ -151,6 +157,14 @@ function renderScanner() {
 
   browserBox.appendChild(browserRow);
   panel.appendChild(browserBox);
+
+  // Loader during retrain
+  if (state.isRetraining) {
+    const loaderDiv = el('div', null);
+    loaderDiv.appendChild(el('p', null, 'Retraining neural network and saving snapshot…'));
+    loaderDiv.appendChild(el('div', 'loader'));
+    panel.appendChild(loaderDiv);
+  }
 
   // Loader during scan
   if (state.isScanning) {
@@ -223,6 +237,24 @@ function renderResults(result) {
 }
 
 // ---- Actions ----
+
+async function handleRetrain() {
+  state.isRetraining = true;
+  state.errorMessage = null;
+  state.scanResults = {}; // clear cached results — network weights are changing
+  render();
+
+  try {
+    const res = await fetch('/api/retrain', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Retrain failed');
+  } catch (err) {
+    state.errorMessage = err.message || 'Retrain failed.';
+  } finally {
+    state.isRetraining = false;
+    render();
+  }
+}
 
 async function loadFiles() {
   state.isLoadingFiles = true;

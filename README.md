@@ -1,4 +1,6 @@
-# BrainScan
+# brainscan
+
+**This project was AI-generated using a variety of tools and resources, including manually coded scaffolding for the AI**
 
 A brain.js neural network that scans the vulnerability risk of your web project's source files. No build step, no bundler — just Node.js and a vanilla HTTP server.
 

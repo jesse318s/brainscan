@@ -1,6 +1,6 @@
 # brainscan
 
-**This project was AI-generated using a variety of tools and resources, including manually coded scaffolding for the AI**
+**This project was AI-generated using a variety of tools and resources, including manually coded scaffolding for the AI.**
 
 A brain.js neural network that scans the vulnerability risk of your web project's source files. No build step, no bundler — just Node.js and a vanilla HTTP server.
 
@@ -24,16 +24,16 @@ On first run the network trains from scratch (~20s) and saves a snapshot to `dat
 
 ## Detected Patterns
 
-| Feature | Vulnerability |
-|---|---|
-| `eval()` | Arbitrary code execution |
-| `.innerHTML =` | DOM-based XSS |
-| `document.write()` | Legacy XSS vector |
-| SQL keywords | SQL injection |
-| `exec()` / `spawn()` | OS command injection |
-| `req.body` / `req.query` / `req.params` | Unvalidated user input |
-| Dynamic `require()` / `import()` | Supply-chain / code injection |
-| HTTP request patterns | SSRF |
+| Feature                                 | Vulnerability                 |
+| --------------------------------------- | ----------------------------- |
+| `eval()`                                | Arbitrary code execution      |
+| `.innerHTML =`                          | DOM-based XSS                 |
+| `document.write()`                      | Legacy XSS vector             |
+| SQL keywords                            | SQL injection                 |
+| `exec()` / `spawn()`                    | OS command injection          |
+| `req.body` / `req.query` / `req.params` | Unvalidated user input        |
+| Dynamic `require()` / `import()`        | Supply-chain / code injection |
+| HTTP request patterns                   | SSRF                          |
 
 ## Project Structure
 

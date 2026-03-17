@@ -1,6 +1,3 @@
 # Dependencies (brain.js is vendored in vendor/ — no npm install needed)
 node_modules/
 package-lock.json
-
-# Neural network snapshot (regenerated on first run)
-data/

@@ -56,7 +56,7 @@ brainscan/
 │       └── node_modules/
 │           └── thaw.js/       # brain.js runtime dependency
 └── data/
-    └── trained-network.json   # Snapshot (gitignored, auto-generated)
+    └── trained-network.json   # Snapshot of the trained neural network (created on first run)
 ```
 
 ## Security Notes

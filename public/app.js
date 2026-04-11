@@ -311,32 +311,3 @@ function render() {
 }
 
 document.addEventListener('DOMContentLoaded', render);
-
-
-// ---- DOM helpers ----
-
-function el(tag, className, textContent) {
-  const e = document.createElement(tag);
-  if (className) e.className = className;
-  if (textContent !== undefined) e.textContent = textContent;
-  return e;
-}
-
-function getRiskBarColor(riskPercent) {
-  if (riskPercent < 20) return '#1a7a35';
-  if (riskPercent < 50) return '#c47a00';
-  if (riskPercent < 75) return '#b83000';
-  return '#880000';
-}
-
-function getRiskClass(label) {
-  const map = {
-    'Low Risk':      'risk-low',
-    'Medium Risk':   'risk-medium',
-    'High Risk':     'risk-high',
-    'Critical Risk': 'risk-critical',
-  };
-  return map[label] || 'risk-low';
-}
-
-

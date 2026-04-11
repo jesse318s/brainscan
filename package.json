@@ -4,8 +4,7 @@
   "description": "brain.js vulnerability scanner for web code",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "test": "test"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",

@@ -30,7 +30,9 @@ const extractFeatures = (code) => {
     has_eval:             /\beval\s*\(/.test(stripped) ? 1 : 0,
     has_inner_html:       /\.innerHTML\s*=/.test(stripped) ? 1 : 0,
     has_document_write:   /document\.write\s*\(/.test(stripped) ? 1 : 0,
-    has_sql:              /\b(SELECT\s+.+\s+FROM|INSERT\s+INTO|UPDATE\s+.+\s+SET|DELETE\s+FROM)\b/i.test(stripped) ? 1 : 0,
+    // SQL keywords live inside string literals in typical injection-prone code,
+    // so check the original code (not stripped) — same rationale as has_http_request.
+    has_sql:              /\b(SELECT\s+.+\s+FROM|INSERT\s+INTO|UPDATE\s+.+\s+SET|DELETE\s+FROM)\b/i.test(code) ? 1 : 0,
     has_exec:             /\b(exec|execSync|spawn|spawnSync)\s*\(/.test(stripped) ? 1 : 0,
     has_unvalidated_input:/req\.(body|params|query)\s*[\[.]/.test(stripped) ? 1 : 0,
     has_dynamic_import:   /require\s*\(\s*(?!['"`])/.test(stripped) || /import\s*\(\s*(?!['"`])/.test(stripped) ? 1 : 0,

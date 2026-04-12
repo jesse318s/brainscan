@@ -1,3 +1,3 @@
 # Testing
 
-This project is tested via an agent using commands (without adding tests/code to the project or running the server)
+This project is tested via an agent (only temporarily adding tests/code to the project and without running the server)
